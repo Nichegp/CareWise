@@ -1,0 +1,8 @@
+.venv/pyvenv.cfg
+.venv/bin/
+.venv/lib/
+.venv/lib/python3.9/site-packages/urllib3/util/ssl_match_hostname.py
+.venv/etc/jupyter/nbconfig/notebook.d/pydeck.json
+.venv/share/jupyter/nbextensions/pydeck/index.js
+.venv/share/jupyter/nbextensions/pydeck/extensionRequires.js
+.venv/share/jupyter/nbextensions/pydeck/index.js.map
