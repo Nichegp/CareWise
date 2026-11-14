@@ -46,7 +46,9 @@ def render():
             unsafe_allow_html=True)
         input_mode = st.radio(
             "Select how you want to enter patient data:",
-            ["📷 Scan My Report", "⌨️ I can manually enter my data"],horizontal=True
+            ["📷 Scan My Report", "⌨️ I can manually enter my data"],
+            horizontal=True,
+            key="heart_disease_input_mode"
         )
         if input_mode == "📷 Scan My Report":
             uploaded_img = st.file_uploader("Upload Medical Report", type=["jpg", "jpeg", "png"])

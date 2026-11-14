@@ -3,6 +3,9 @@ from streamlit.elements.lib.layout_utils import Height
 import Heart_disease_predictor
 import FindHospital
 import parkinsons
+import Breastcancer
+import diabetes_predictor
+import Bloodtest
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer
@@ -10,7 +13,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score
 
 # --------------------------------------------------
-# Page Config
+# Page Configi
 # --------------------------------------------------
 st.set_page_config(
     page_title="Care Wise",
@@ -47,6 +50,7 @@ h3 {
 
 </style>
 """, unsafe_allow_html=True)
+
 st.markdown("""
 <style>
 img {
@@ -57,15 +61,24 @@ img {
 """, unsafe_allow_html=True)
 
 st.image("./data/Banner.png", use_container_width=True)
+
 # --------------------------------------------------
 # Header / Hero Section
+# --------------------------------------------------
+
+# --------------------------------------------------
+# Tabs Section
 # --------------------------------------------------
 # --------------------------------------------------
 # Tabs Section
 # --------------------------------------------------
-heart, parkinson = st.tabs([
+
+heart, parkinson, breast, diabetes, blood = st.tabs([
     "❤️ AI Cardiologist",
-    "🧠 AI Parkinson’s Detector",
+    "🧠 AI Parkinson's Detector",
+    "🎗️ AI Breast Cancer Detector",
+    "🩸 AI Diabetes Predictor",
+    "🧪 AI Blood Test Analyzer"
 ])
 
 with heart:
@@ -74,8 +87,20 @@ with heart:
 with parkinson:
     parkinsons.render()
 
+with breast:
+    Breastcancer.render()
+
+with diabetes:
+    diabetes_predictor.render()
+
+with blood:
+    Bloodtest.render()
+
 FindHospital.render()
+
+# --------------------------------------------------
 # Footer
+# --------------------------------------------------
 st.markdown("""
 <div style='text-align: center; padding: 0rem; color: green; font-size: 1.2rem;'>
 Care Wise is not designed to replace doctors. It is to ensure patients reach out to doctors at the right time and well informed.
