@@ -41,10 +41,7 @@ def render():
             unsafe_allow_html=True
         )
     with left_col:
-        st.markdown(
-            f'<h2 style=font-size:20px; margin-bottom:10px;"> Please choose how you would like to provide your medical details:</h2>',
-            unsafe_allow_html=True)
-        input_mode = st.radio(
+            input_mode = st.radio(
             "Select how you want to enter patient data:",
             ["📷 Scan My Report", "⌨️ I can manually enter my data"],
             horizontal=True,

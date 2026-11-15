@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pytesseract
 import re
@@ -7,7 +8,6 @@ from PIL import Image, ImageEnhance
 
 # Parameters below are limited to those present in the supplied sample report.
 # Reference intervals are taken from that report where available.
-# For values without a stated interval, the code displays "Not stated".
 
 PARAMETERS = {
     # COMPLETE URINE EXAMINATION
@@ -68,10 +68,12 @@ PARAMETERS = {
     "Vitamin B12": {"aliases": ["vitamin b12 cyanocobalamin", "vitamin b12", "cyanocobalamin"], "unit": "pg/mL", "ref": "197 - 771", "kind": "number", "low": 197, "high": 771}
 }
 
+
 def _normalise(text):
     text = text.lower().replace("µ", "u").replace("μ", "u")
     text = re.sub(r"[^a-z0-9./+\- ]", " ", text)
     return re.sub(r"\s+", " ", text).strip()
+
 
 def _find_numeric_after_label(text, aliases):
     lines = text.splitlines()
@@ -91,26 +93,26 @@ def _find_numeric_after_label(text, aliases):
                     pass
     return None
 
+
 def extract_report_values(image):
     img = image.convert("RGB")
     img = img.resize((img.width * 2, img.height * 2))
     img = ImageEnhance.Contrast(img).enhance(1.6)
     text = pytesseract.image_to_string(img, config="--psm 6")
     found = {}
-    numeric_names = [
-        name for name, info in PARAMETERS.items()
-        if info["kind"] == "number"
-    ]
-    for name in numeric_names:
-        value = _find_numeric_after_label(text, PARAMETERS[name]["aliases"])
-        if value is not None:
-            found[name] = value
+    for name, info in PARAMETERS.items():
+        if info["kind"] == "number":
+            value = _find_numeric_after_label(text, info["aliases"])
+            if value is not None:
+                found[name] = value
     return found, text
+
 
 def analyse_value(name, value):
     info = PARAMETERS[name]
     low = info.get("low")
     high = info.get("high")
+
     if low is None or high is None:
         return "REVIEW", "Compare this result with the laboratory's printed reference information."
     if value < low:
@@ -118,6 +120,7 @@ def analyse_value(name, value):
     if value > high:
         return "HIGH", f"{name} is above the reference interval shown in the sample report."
     return "NORMAL", f"{name} is within the reference interval shown in the sample report."
+
 
 def get_suggestion(name, status):
     suggestions = {
@@ -233,59 +236,206 @@ def get_suggestion(name, status):
             "HIGH": "Discuss this with a clinician alongside the rest of the CBC, especially if the elevation persists."
         }
     }
+
     if name in suggestions and status in suggestions[name]:
         return suggestions[name][status]
     if status == "LOW":
         return "Discuss this result with a healthcare professional and interpret it alongside your symptoms and other test results. Do not start supplements or medicines based on this result alone."
     return "Discuss this result with a healthcare professional to identify the cause. Do not try to correct it through diet or supplements alone."
 
+
 def render():
     st.title("Please provide your medical details")
-    st.write(
-        "Upload a clear image of the relevant laboratory report page. "
-        "CareWise will try to read the parameters included in this report."
+    st.write("Please choose how you would like to provide your medical details:")
+
+    left_col, right_col = st.columns([2, 1])
+
+    with right_col:
+        st.markdown(
+            '<div style="background-color:#e8f5e8;border-left:3px solid #4caf50;padding:8px;margin:6px 0;border-radius:4px;">'
+            '<p style="color:#2e7d32;margin:0;font-weight:600;font-size:14px;">🩺 Blood Test Report</p>'
+            '<p style="color:#388e3c;margin:2px 0 0 0;font-size:12px;">OCR-assisted report reading</p></div>',
+            unsafe_allow_html=True
+        )
+
+    with left_col:
+        input_mode = st.radio(
+            "Select how you want to enter patient data:",
+            ["📷 Scan Blood Test Report", "⌨️ Manually Enter Data"],
+            horizontal=True,
+            key="cw_lab_input_mode"
+        )
+
+    prefill = {}
+
+    if input_mode == "📷 Scan Blood Test Report":
+        uploaded = st.file_uploader(
+            "Upload Medical Report",
+            type=["jpg", "jpeg", "png"],
+            key="carewise_lab_report_uploader"
+        )
+
+        if uploaded:
+            img = Image.open(uploaded).convert("RGB")
+            st.image(img, width=250)
+
+            if st.button("Read Blood Test Report", key="cw_lab_scan_button"):
+                with st.spinner("Reading report..."):
+                    try:
+                        extracted_values, raw_text = extract_report_values(img)
+
+                        for parameter_name in PARAMETERS:
+                            st.session_state.pop(f"cw_lab_input_{parameter_name}", None)
+
+                        st.session_state["cw_lab_prefill"] = {
+                            name: str(value) for name, value in extracted_values.items()
+                        }
+                        st.session_state["cw_lab_raw_text"] = raw_text
+                        st.session_state.pop("cw_lab_results", None)
+                        st.session_state.pop("cw_lab_results_ready", None)
+
+                        if extracted_values:
+                            st.success(
+                                f"Extracted {len(extracted_values)} numeric parameters. Please verify the values below."
+                            )
+                        else:
+                            st.warning(
+                                "No numeric parameters were confidently extracted. Please enter your values manually below."
+                            )
+
+                    except Exception as exc:
+                        st.error(f"Could not read the image: {exc}")
+
+        prefill = st.session_state.get("cw_lab_prefill", {})
+
+        if uploaded and not prefill:
+            st.info("Upload a report and select Read Blood Test Report to extract available values.")
+
+    else:
+        st.session_state.pop("cw_lab_prefill", None)
+        prefill = {}
+
+    st.subheader(
+        "Enter Medical Details"
+        if input_mode == "⌨️ Manually Enter Data"
+        else "Auto-Filled Form Below (Editable)"
     )
-    st.info(
-        "The uploaded source contains urine examination, CBC, differential "
-        "counts, peripheral smear observations, TSH, Vitamin D and Vitamin B12. "
-        "No unrelated tests are included in this module."
+
+    st.caption(
+        "Values start at 0.0. Replace them with the values shown on your laboratory report. "
+        "Text-based observations can be entered in the relevant fields."
     )
-    uploaded_file = st.file_uploader(
-        "Upload report image",
-        type=["png", "jpg", "jpeg"],
-        key="carewise_lab_report_uploader"
-    )
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file).convert("RGB")
-        st.image(image, caption="Uploaded laboratory report", use_container_width=True)
-        if st.button(
-            "Analyze Report",
-            key="carewise_lab_analyze",
-            use_container_width=True
-        ):
-            with st.spinner("Reading report..."):
-                try:
-                    values, raw_text = extract_report_values(image)
-                    st.session_state["cw_lab_values"] = values
-                    st.session_state["cw_lab_raw_text"] = raw_text
-                    st.session_state.pop("cw_lab_manual", None)
-                    if values:
-                        st.success(f"Extracted {len(values)} numeric parameters.")
-                    else:
-                        st.warning(
-                            "No numeric parameters were confidently extracted. "
-                            "Please use the manual entry section below or upload a clearer image."
+
+    section_names = {
+        "COMPLETE URINE EXAMINATION": [
+            "Volume", "Colour", "Transparency", "pH", "Specific Gravity",
+            "Protein", "Glucose", "Blood (urine)", "Ketone", "Bilirubin (urine)",
+            "Urobilinogen", "Nitrite", "Leucocyte Esterase", "WBC / Pus Cells",
+            "Transitional / Squamous epithelial cells", "RBCs (urine)",
+            "Crystals", "Casts", "Bacteria"
+        ],
+        "COMPLETE BLOOD COUNT": [
+            "Haemoglobin", "RBC Count", "PCV / Haematocrit", "MCV",
+            "MCH", "MCHC", "RDW", "Total Leucocyte Count (TLC)"
+        ],
+        "DIFFERENTIAL LEUCOCYTE COUNT": [
+            "Neutrophils (%)", "Lymphocytes (%)", "Monocytes (%)",
+            "Eosinophils (%)", "Basophils (%)", "Neutrophils (absolute)",
+            "Lymphocytes (absolute)", "Monocytes (absolute)",
+            "Eosinophils (absolute)", "Basophils (absolute)",
+            "Platelet Count", "MPV"
+        ],
+        "PERIPHERAL BLOOD SMEAR": [
+            "RBC smear description", "WBC smear description",
+            "Platelet smear description", "Hemoparasites",
+            "Peripheral smear impression"
+        ],
+        "IMMUNOASSAYS": [
+            "TSH", "Vitamin D, 25-OH", "Vitamin B12"
+        ]
+    }
+
+    entered_values = {}
+
+    with st.form("cw_lab_results_form"):
+        for section, names in section_names.items():
+            st.markdown(f"### {section.title()}")
+            columns = st.columns(2)
+
+            for index, name in enumerate(names):
+                info = PARAMETERS[name]
+
+                with columns[index % 2]:
+                    if info["kind"] == "number":
+                        default = str(prefill.get(name, "0.0"))
+
+                        raw_value = st.text_input(
+                            f"{name} ({info['unit']})" if info["unit"] else name,
+                            value=default,
+                            key=f"cw_lab_input_{name}"
                         )
-                except Exception as exc:
-                    st.error(f"Could not read the image: {exc}")
-    if "cw_lab_values" in st.session_state:
-        values = st.session_state["cw_lab_values"]
-        st.divider()
-        st.subheader("Extracted Results")
-        rows = []
-        for name, value in values.items():
-            status, explanation = analyse_value(name, value)
+
+                        entered_values[name] = raw_value
+
+                    else:
+                        entered_values[name] = st.text_input(
+                            name,
+                            value=str(prefill.get(name, "")),
+                            key=f"cw_lab_input_{name}"
+                        )
+
+        analyze = st.form_submit_button(
+            "Analyze Report",
+            use_container_width=True
+        )
+
+    if analyze:
+        results = {}
+        invalid = []
+
+        for name, raw_value in entered_values.items():
             info = PARAMETERS[name]
+
+            if info["kind"] == "number":
+                try:
+                    results[name] = float(
+                        str(raw_value).replace(",", "").strip() or "0"
+                    )
+                except ValueError:
+                    invalid.append(name)
+
+            elif str(raw_value).strip():
+                results[name] = str(raw_value).strip()
+
+        if invalid:
+            st.error("Please enter a valid number for: " + ", ".join(invalid))
+        else:
+            st.session_state["cw_lab_results"] = results
+            st.session_state["cw_lab_results_ready"] = True
+
+    if st.session_state.get("cw_lab_results_ready") and "cw_lab_results" in st.session_state:
+        results = st.session_state["cw_lab_results"]
+
+        st.divider()
+        st.subheader("Blood Test Analysis Results")
+
+        rows = []
+
+        for name, value in results.items():
+            info = PARAMETERS[name]
+
+            if info["kind"] == "number":
+                status, explanation = analyse_value(name, float(value))
+                suggestion = (
+                    get_suggestion(name, status)
+                    if status in ["LOW", "HIGH"]
+                    else ""
+                )
+            else:
+                status = "RECORDED"
+                explanation = "Recorded for clinician review; no automatic interpretation applied."
+                suggestion = ""
+
             rows.append({
                 "Parameter": name,
                 "Value": value,
@@ -294,79 +444,36 @@ def render():
                 "Status": status,
                 "Explanation": explanation
             })
+
+            if suggestion:
+                st.warning(
+                    f"**{name}: {status}**\n\n{suggestion}"
+                )
+
         if rows:
-            abnormal_rows = [
-                row for row in rows
-                if row["Status"] in ["LOW", "HIGH"]
-            ]
-            if abnormal_rows:
-                st.subheader("Suggestions")
-                for row in abnormal_rows:
-                    suggestion = get_suggestion(
-                        row["Parameter"],
-                        row["Status"]
-                    )
-                    st.warning(
-                        f'**{row["Parameter"]}: {row["Status"]}**\n\n'
-                        f'{suggestion}'
-                    )
-            else:
-                st.success("No values with a configured low or high range were flagged.")
+            st.dataframe(
+                rows,
+                use_container_width=True,
+                hide_index=True
+            )
+
             output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()))
+            writer = csv.DictWriter(
+                output,
+                fieldnames=list(rows[0].keys())
+            )
             writer.writeheader()
             writer.writerows(rows)
+
             st.download_button(
                 "Download extracted results",
                 data=output.getvalue(),
                 file_name="CareWise_Lab_Report_Results.csv",
                 mime="text/csv"
             )
-    st.divider()
-    st.subheader("Manual Entry")
+
     st.caption(
-        "Use this for qualitative urine findings and peripheral-smear descriptions, "
-        "or when OCR misses a table value."
-    )
-    with st.form("cw_lab_manual_form"):
-        selected = st.selectbox("Select parameter", list(PARAMETERS.keys()))
-        info = PARAMETERS[selected]
-        if info["kind"] == "number":
-            manual_value = st.number_input("Result value", value=0.0, format="%.3f")
-            manual_text = ""
-        else:
-            manual_value = None
-            manual_text = st.text_input("Result / observation")
-        submitted = st.form_submit_button("Add manual result")
-    if submitted:
-        manual_results = st.session_state.get("cw_lab_manual", {})
-        manual_results[selected] = manual_value if manual_value is not None else manual_text
-        st.session_state["cw_lab_manual"] = manual_results
-        st.success(f"{selected} added.")
-    if st.session_state.get("cw_lab_manual"):
-        st.subheader("Manually Added Results")
-        manual_rows = []
-        for name, value in st.session_state["cw_lab_manual"].items():
-            info = PARAMETERS[name]
-            if info["kind"] == "number":
-                status, explanation = analyse_value(name, float(value))
-                shown_value = value
-            else:
-                status = "RECORDED"
-                explanation = "Recorded for clinician review; no automatic interpretation applied."
-                shown_value = value
-            manual_rows.append({
-                "Parameter": name,
-                "Value": shown_value,
-                "Unit": info["unit"],
-                "Reference": info["ref"],
-                "Status": status,
-                "Explanation": explanation
-            })
-        st.dataframe(manual_rows, use_container_width=True, hide_index=True)
-    st.caption(
-        "Important: Reference intervals are reproduced from the supplied report "
-        "where stated. They are specific to that laboratory and patient context; "
-        "they should not be treated as universal ranges. OCR results must be checked "
-        "against the original report. This tool is not a diagnosis."
+        "Important: Reference intervals are reproduced from the supplied report where stated. "
+        "They are specific to that laboratory and patient context and should not be treated as universal ranges. "
+        "OCR results must be checked against the original report. This tool is not a diagnosis."
     )

@@ -181,9 +181,9 @@ def render():
 
                 bmi = st.number_input("BMI", min_value=5.0, max_value=100.0, value=bmi, step=0.1)
 
-                hba1c = st.number_input("HbA1c Level (%)", min_value=3.0, max_value=20.0, value=hba1c, step=0.1)
+                hba1c = st.number_input("HbA1c Level (%)", min_value=0.0, max_value=20.0, value=hba1c, step=0.1)
 
-                blood_glucose = st.number_input("Blood Glucose Level (mg/dL)", min_value=20, max_value=600, value=int(blood_glucose))
+                blood_glucose = st.number_input("Blood Glucose Level (mg/dL)", min_value=0, max_value=600, value=int(blood_glucose))
 
                 if st.button("DiabetesAnalyze"):
 

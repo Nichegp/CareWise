@@ -29,11 +29,6 @@ def render():
 
 # Sidebar
     st.sidebar.image("./data/Logo.png")
-    st.sidebar.write(
-        "Care Wise is an AI-powered health assistant that provides "
-        "preliminary disease predictions based on user-described symptoms."
-        "It does not replace a doctor.")
-
     st.sidebar.title("🏥 Find Nearby Hospitals")
         
     address = st.sidebar.text_input("📍 Enter your address (e.g., 'Bangalore, India')", 
