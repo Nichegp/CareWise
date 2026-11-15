@@ -6,3 +6,4 @@ googlemaps
 SpeechRecognition
 pytesseract
 tesseract
+Pillow
