@@ -1,39 +1,39 @@
+
 import streamlit as st
-from streamlit.elements.lib.layout_utils import Height
+
 import Heart_disease_predictor
 import FindHospital
 import parkinsons
 import Breastcancer
 import diabetes_predictor
 import Bloodtest
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import accuracy_score
 
 # --------------------------------------------------
-# Page Configi
+# Page Configuration
 # --------------------------------------------------
+
 st.set_page_config(
     page_title="Care Wise",
     page_icon="🏥",
-    layout="wide"
+    layout="wide",
 )
 
 # --------------------------------------------------
-# Global CSS – remove wasted space
+# Global CSS – Remove Wasted Space
 # --------------------------------------------------
+
 st.markdown("""
 <style>
 .block-container {
     padding-top: 0.5rem;
     padding-bottom: 0rem;
 }
+
 button[data-baseweb="tab"] > div {
     font-size: 20px;
-    font-weight:200;
+    font-weight: 200;
 }
+
 h1 {
     margin-bottom: 0.1rem;
 }
@@ -45,14 +45,9 @@ h3 {
 
 [data-baseweb="tab-list"] {
     margin-top: 0rem;
-    font-size:40px
+    font-size: 40px;
 }
 
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
 img {
     max-height: 300px;
     object-fit: cover;
@@ -60,47 +55,83 @@ img {
 </style>
 """, unsafe_allow_html=True)
 
+# --------------------------------------------------
+# Banner
+# --------------------------------------------------
+
 st.image("./data/Banner.png", use_container_width=True)
 
 # --------------------------------------------------
-# Header / Hero Section
+# Main Tabs
 # --------------------------------------------------
 
+blood_tab, illness_tab = st.tabs(
+    [
+        "🧪 Analyse Blood Report",
+        "🩺 Critical Illness Report",
+    ]
+)
+
 # --------------------------------------------------
-# Tabs Section
-# --------------------------------------------------
-# --------------------------------------------------
-# Tabs Section
+# Blood Test Report
 # --------------------------------------------------
 
-heart, parkinson, breast, diabetes, blood = st.tabs([
-    "❤️ AI Cardiologist",
-    "🧠 AI Parkinson's Detector",
-    "🎗️ AI Breast Cancer Detector",
-    "🩸 AI Diabetes Predictor",
-    "🧪 AI Blood Test Analyzer"
-])
-
-with heart:
-    Heart_disease_predictor.render()
-
-with parkinson:
-    parkinsons.render()
-
-with breast:
-    Breastcancer.render()
-
-with diabetes:
-    diabetes_predictor.render()
-
-with blood:
+with blood_tab:
     Bloodtest.render()
+
+# --------------------------------------------------
+# Critical Illness Report
+# --------------------------------------------------
+
+with illness_tab:
+
+    cardiologist_tab, parkinsons_tab, breast_cancer_tab, diabetes_tab = st.tabs(
+        [
+            "❤️ Cardiologist",
+            "🧠 Parkinson's",
+            "🎗️ Breast Cancer",
+            "🩸 Diabetes",
+        ]
+    )
+
+    # ----------------------------------------------
+    # Cardiologist
+    # ----------------------------------------------
+
+    with cardiologist_tab:
+        Heart_disease_predictor.render()
+
+    # ----------------------------------------------
+    # Parkinson's
+    # ----------------------------------------------
+
+    with parkinsons_tab:
+        parkinsons.render()
+
+    # ----------------------------------------------
+    # Breast Cancer
+    # ----------------------------------------------
+
+    with breast_cancer_tab:
+        Breastcancer.render()
+
+    # ----------------------------------------------
+    # Diabetes
+    # ----------------------------------------------
+
+    with diabetes_tab:
+        diabetes_predictor.render()
+
+# --------------------------------------------------
+# Nearby Hospitals
+# --------------------------------------------------
 
 FindHospital.render()
 
 # --------------------------------------------------
 # Footer
 # --------------------------------------------------
+
 st.markdown("""
 <div style='text-align: center; padding: 0rem; color: green; font-size: 1.2rem;'>
 Care Wise is not designed to replace doctors. It is to ensure patients reach out to doctors at the right time and well informed.

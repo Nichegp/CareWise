@@ -41,9 +41,9 @@ def render():
             unsafe_allow_html=True
         )
     with left_col:
-            input_mode = st.radio(
+        input_mode = st.radio(
             "Select how you want to enter patient data:",
-            ["📷 Scan My Report", "⌨️ I can manually enter my data"],
+            ["📷 Scan My Report", "⌨️ Manually Enter Data"],
             horizontal=True,
             key="heart_disease_input_mode"
         )

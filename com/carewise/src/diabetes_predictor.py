@@ -84,15 +84,9 @@ def render():
         st.caption(f"Test Data Accuracy: {test_data_accuracy:.2%}")
 
     with left_col:
-
-        st.markdown(
-            f'<h2 style="font-size:20px; margin-bottom:10px;">Please choose how you would like to provide your medical details:</h2>',
-            unsafe_allow_html=True
-        )
-
         input_mode = st.radio(
             "Select how you want to enter patient data:",
-            ["📷 Scan My Report", "⌨️ I can manually enter my data"],
+            ["📷 Scan My Report", "⌨️ Manually Enter Data"],
             horizontal=True,
             key="diabetes_input_mode"
         )
@@ -121,50 +115,72 @@ def render():
 
                 # Extract values from the uploaded report (OCR-based)
 
-                age = extract(r"age[: ]+(\d+(?:\.\d+)?)", extracted_text, 0)
+                age = extract(
+                    r"age[\s_:]+(\d+(?:\.\d+)?)",
+                    extracted_text, 0
+                )
 
-                bmi = extract(r"bmi[: ]+(\d+(?:\.\d+)?)", extracted_text, 0)
+                bmi = extract(
+                    r"bmi[\s_:]+(\d+(?:\.\d+)?)",
+                    extracted_text, 0
+                )
 
-                hba1c = extract(r"(?:hba1c|hb a1c|a1c)(?: level)?[: ]+(\d+(?:\.\d+)?)", extracted_text, 0)
+                hba1c = extract(
+                    r"(?:hba1c|hb[\s_]*a1c|a1c)[\s_]*(?:level)?[\s_:|]*(\d+(?:\.\d+)?)",
+                    extracted_text, 0
+                )
 
-                blood_glucose = extract(r"(?:blood glucose|glucose)(?: level)?[: ]+(\d+(?:\.\d+)?)", extracted_text, 0)
+                blood_glucose = extract(
+                    r"(?:blood[\s_]*glucose|glucose)[\s_]*(?:level)?[\s_:|]*(\d+(?:\.\d+)?)",
+                    extracted_text, 0
+                )
 
-                hypertension = extract(r"hypertension[: ]+([01])", extracted_text, 0)
+                hypertension = extract(
+                    r"hypertension[\s_:]+([01])",
+                    extracted_text, 0
+                )
 
-                heart_disease = extract(r"heart disease[: ]+([01])", extracted_text, 0)
+                heart_disease = extract(
+                    r"heart[\s_]*disease[\s_:]+([01])",
+                    extracted_text, 0
+                )
 
-                gender = extract(r"(?:gender|sex)[: ]+(male|female|other)", extracted_text, "Female")
+                gender = extract(
+                    r"(?:gender|sex)[\s_:]+(male|female|other)",
+                    extracted_text, "Female"
+                )
 
-                smoking_history = extract(r"smoking history[: ]+([a-z ]+)", extracted_text, "No Info")
+                smoking_history = extract(
+                    r"smoking[\s_]*history[\s_:]+(no info|not current|never|former|current|ever)",
+                    extracted_text, "No Info"
+                )
 
                 # Normalize OCR text values
 
                 gender = str(gender).strip().title()
 
                 if gender not in ["Male", "Female", "Other"]:
-
                     gender = "Female"
 
                 smoking_history = str(smoking_history).strip().lower()
 
-                if smoking_history not in ["never", "former", "current", "not current", "ever", "no info"]:
-
+                if smoking_history not in [
+                    "never", "former", "current",
+                    "not current", "ever", "no info"
+                ]:
                     smoking_history = "no info"
 
-                smoking_history = "No Info" if smoking_history == "no info" else smoking_history
+                smoking_history = (
+                    "No Info" if smoking_history == "no info"
+                    else smoking_history
+                )
 
                 age = float(age)
-
                 bmi = float(bmi)
-
                 hba1c = float(hba1c)
-
                 blood_glucose = float(blood_glucose)
-
                 hypertension = int(hypertension)
-
                 heart_disease = int(heart_disease)
-
                 st.subheader("Auto-Filled Form Below (Editable)")
 
                 # STEP 3 — UI fields auto-fill

@@ -110,20 +110,15 @@ def render():
         )
 
     with left_col:
-        st.markdown(
-            f'<h2 style=font-size:20px; margin-bottom:10px;"> Please choose how you would like to provide your medical details:</h2>',
-            unsafe_allow_html=True
-        )
-
         input_mode = st.radio(
             "Select how you want to enter patient data:",
-            ["📷 Scan Parkinsons Report", "⌨️ Manually Enter Data"],
+            ["📷 Scan My Report", "⌨️ Manually Enter Data"],
             horizontal=True
         )
 
     # ---------------- SCAN REPORT ----------------
 
-    if input_mode == "📷 Scan Parkinsons Report":
+    if input_mode == "📷 Scan My Report":
 
         uploaded = st.file_uploader(
             " Upload Medical Report",

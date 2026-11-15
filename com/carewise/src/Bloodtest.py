@@ -6,9 +6,6 @@ import io
 import csv
 from PIL import Image, ImageEnhance
 
-# Parameters below are limited to those present in the supplied sample report.
-# Reference intervals are taken from that report where available.
-
 PARAMETERS = {
     # COMPLETE URINE EXAMINATION
     "Volume": {"aliases": ["volume"], "unit": "mL", "ref": ">1.5", "kind": "number"},
@@ -71,40 +68,142 @@ PARAMETERS = {
 
 def _normalise(text):
     text = text.lower().replace("µ", "u").replace("μ", "u")
+    text = text.replace("–", "-").replace("—", "-")
     text = re.sub(r"[^a-z0-9./+\- ]", " ", text)
     return re.sub(r"\s+", " ", text).strip()
-
-
-def _find_numeric_after_label(text, aliases):
-    lines = text.splitlines()
-    for line in lines:
-        norm = _normalise(line)
-        for alias in sorted(aliases, key=len, reverse=True):
-            a = _normalise(alias)
-            match = re.search(r"(?<![a-z])" + re.escape(a) + r"(?![a-z])", norm)
-            if not match:
-                continue
-            tail = norm[match.end():]
-            nums = re.findall(r"(?<![a-z])[-+]?\d[\d,]*(?:\.\d+)?", tail)
-            if nums:
-                try:
-                    return float(nums[0].replace(",", ""))
-                except ValueError:
-                    pass
-    return None
 
 
 def extract_report_values(image):
     img = image.convert("RGB")
     img = img.resize((img.width * 2, img.height * 2))
-    img = ImageEnhance.Contrast(img).enhance(1.6)
+    img = ImageEnhance.Contrast(img).enhance(1.8)
+    img = ImageEnhance.Sharpness(img).enhance(1.5)
+
+    # Preserve table rows instead of treating the whole page as one paragraph.
     text = pytesseract.image_to_string(img, config="--psm 6")
+    lines = [_normalise(line) for line in text.splitlines() if line.strip()]
+
     found = {}
-    for name, info in PARAMETERS.items():
-        if info["kind"] == "number":
-            value = _find_numeric_after_label(text, info["aliases"])
-            if value is not None:
+
+    labels = {
+        "Volume": ["volume"],
+        "Colour": ["colour", "color"],
+        "Transparency": ["transparency"],
+        "pH": ["ph"],
+        "Specific Gravity": ["specific gravity"],
+        "Protein": ["protein"],
+        "Glucose": ["glucose"],
+        "Blood (urine)": ["blood"],
+        "Ketone": ["ketone"],
+        "Bilirubin (urine)": ["bilirubin"],
+        "Urobilinogen": ["urobilinogen"],
+        "Nitrite": ["nitrite"],
+        "Leucocyte Esterase": ["leucocyte esterase", "leukocyte esterase"],
+        "WBC / Pus Cells": ["wbc / pus cells", "wbc pus cells", "pus cells"],
+        "Transitional / Squamous epithelial cells": ["transitional / squamous epithelial cells", "transitional squamous epithelial cells", "squamous epithelial cells"],
+        "RBCs (urine)": ["rbcs"],
+        "Crystals": ["crystals"],
+        "Casts": ["casts"],
+        "Bacteria": ["bacteria"],
+        "Haemoglobin": ["haemoglobin (hb)", "hemoglobin (hb)", "haemoglobin", "hemoglobin"],
+        "RBC Count": ["rbc count", "red blood cell count"],
+        "PCV / Haematocrit": ["pcv / haematocrit", "pcv / hematocrit", "packed cell volume"],
+        "MCV": ["mcv"],
+        "MCH": ["mch"],
+        "MCHC": ["mchc"],
+        "RDW": ["rdw"],
+        "Total Leucocyte Count (TLC)": ["total leucocyte count (tlc)", "total leucocyte count", "total leukocyte count", "tlc"],
+        "Neutrophils (absolute)": ["neutrophils (absolute)", "neutrophils absolute"],
+        "Lymphocytes (absolute)": ["lymphocytes (absolute)", "lymphocytes absolute"],
+        "Monocytes (absolute)": ["monocytes (absolute)", "monocytes absolute"],
+        "Eosinophils (absolute)": ["eosinophils (absolute)", "eosinophils absolute"],
+        "Basophils (absolute)": ["basophils (absolute)", "basophils absolute"],
+        "Neutrophils (%)": ["neutrophils"],
+        "Lymphocytes (%)": ["lymphocytes"],
+        "Monocytes (%)": ["monocytes"],
+        "Eosinophils (%)": ["eosinophils"],
+        "Basophils (%)": ["basophils"],
+        "Platelet Count": ["platelet count"],
+        "MPV": ["mean platelet volume (mpv)", "mean platelet volume", "mpv"],
+        "RBC smear description": ["rbc morphology"],
+        "WBC smear description": ["wbc morphology"],
+        "Platelet smear description": ["platelet morphology"],
+        "Hemoparasites": ["hemoparasites"],
+        "Peripheral smear impression": ["smear impression"],
+        "TSH": ["thyroid stimulating hormone (tsh)", "thyroid stimulating hormone", "tsh"],
+        "Vitamin D, 25-OH": ["vitamin d, 25-oh", "vitamin d 25-oh", "vitamin d"],
+        "Vitamin B12": ["vitamin b12"]
+    }
+
+    text_fields = {
+        "Colour", "Transparency", "Protein", "Glucose", "Blood (urine)",
+        "Ketone", "Bilirubin (urine)", "Urobilinogen", "Nitrite",
+        "Leucocyte Esterase", "Crystals", "Casts", "Bacteria",
+        "Hemoparasites", "RBC smear description", "WBC smear description",
+        "Platelet smear description", "Peripheral smear impression"
+    }
+
+    for name, aliases in labels.items():
+        for line in lines:
+            matched_alias = None
+
+            for alias in sorted(aliases, key=len, reverse=True):
+                alias_norm = _normalise(alias)
+                if line == alias_norm or line.startswith(alias_norm + " "):
+                    matched_alias = alias_norm
+                    break
+
+            if not matched_alias:
+                continue
+
+            if name.endswith("(%)") and "absolute" in line:
+                continue
+            if name.endswith("(absolute)") and "absolute" not in line:
+                continue
+
+            tail = line[len(matched_alias):].strip()
+
+            if name in text_fields:
+                if not tail:
+                    continue
+                if name == "Colour":
+                    value = "Pale yellow" if "pale yellow" in tail else tail.split()[0]
+                elif name == "Transparency":
+                    value = "Clear" if "clear" in tail else tail.split()[0]
+                elif name in {
+                    "RBC smear description", "WBC smear description",
+                    "Platelet smear description", "Peripheral smear impression"
+                }:
+                    value = tail.strip()
+                elif name == "Hemoparasites":
+                    value = "Not seen" if "not seen" in tail else tail
+                else:
+                    value = tail.split()[0]
                 found[name] = value
+            else:
+                range_match = re.search(
+                    r"(?<![a-z])([-+]?\d[\d,]*(?:\.\d+)?)\s*[-–]\s*([-+]?\d[\d,]*(?:\.\d+)?)",
+                    tail
+                )
+                match = re.search(
+                    r"(?<![a-z])([-+]?\d[\d,]*(?:\.\d+)?)",
+                    tail
+                )
+
+                if range_match:
+                    try:
+                        first = float(range_match.group(1).replace(",", ""))
+                        second = float(range_match.group(2).replace(",", ""))
+                        found[name] = (first + second) / 2
+                    except ValueError:
+                        pass
+                elif match:
+                    try:
+                        found[name] = float(match.group(1).replace(",", ""))
+                    except ValueError:
+                        pass
+            break
+
     return found, text
 
 
@@ -115,10 +214,13 @@ def analyse_value(name, value):
 
     if low is None or high is None:
         return "REVIEW", "Compare this result with the laboratory's printed reference information."
+
     if value < low:
         return "LOW", f"{name} is below the reference interval shown in the sample report."
+
     if value > high:
         return "HIGH", f"{name} is above the reference interval shown in the sample report."
+
     return "NORMAL", f"{name} is within the reference interval shown in the sample report."
 
 
@@ -239,15 +341,14 @@ def get_suggestion(name, status):
 
     if name in suggestions and status in suggestions[name]:
         return suggestions[name][status]
+
     if status == "LOW":
         return "Discuss this result with a healthcare professional and interpret it alongside your symptoms and other test results. Do not start supplements or medicines based on this result alone."
+
     return "Discuss this result with a healthcare professional to identify the cause. Do not try to correct it through diet or supplements alone."
 
 
 def render():
-    st.title("Please provide your medical details")
-    st.write("Please choose how you would like to provide your medical details:")
-
     left_col, right_col = st.columns([2, 1])
 
     with right_col:
@@ -267,6 +368,7 @@ def render():
         )
 
     prefill = {}
+    show_form = False
 
     if input_mode == "📷 Scan Blood Test Report":
         uploaded = st.file_uploader(
@@ -285,133 +387,136 @@ def render():
                         extracted_values, raw_text = extract_report_values(img)
 
                         for parameter_name in PARAMETERS:
-                            st.session_state.pop(f"cw_lab_input_{parameter_name}", None)
+                            st.session_state.pop(
+                                f"cw_lab_input_{parameter_name}", None
+                            )
 
                         st.session_state["cw_lab_prefill"] = {
-                            name: str(value) for name, value in extracted_values.items()
+                            name: str(value)
+                            for name, value in extracted_values.items()
                         }
                         st.session_state["cw_lab_raw_text"] = raw_text
                         st.session_state.pop("cw_lab_results", None)
                         st.session_state.pop("cw_lab_results_ready", None)
 
                         if extracted_values:
+                            st.session_state["cw_lab_show_form"] = True
                             st.success(
-                                f"Extracted {len(extracted_values)} numeric parameters. Please verify the values below."
+                                f"Extracted {len(extracted_values)} parameters. Please verify the values below."
                             )
                         else:
+                            st.session_state["cw_lab_show_form"] = False
                             st.warning(
-                                "No numeric parameters were confidently extracted. Please enter your values manually below."
+                                "No parameters were confidently extracted. Please check your report."
                             )
 
                     except Exception as exc:
+                        st.session_state["cw_lab_show_form"] = False
                         st.error(f"Could not read the image: {exc}")
 
         prefill = st.session_state.get("cw_lab_prefill", {})
-
-        if uploaded and not prefill:
-            st.info("Upload a report and select Read Blood Test Report to extract available values.")
+        show_form = st.session_state.get("cw_lab_show_form", False)
 
     else:
+        st.session_state["cw_lab_show_form"] = False
         st.session_state.pop("cw_lab_prefill", None)
         prefill = {}
+        show_form = True
 
-    st.subheader(
-        "Enter Medical Details"
-        if input_mode == "⌨️ Manually Enter Data"
-        else "Auto-Filled Form Below (Editable)"
-    )
-
-    st.caption(
-        "Values start at 0.0. Replace them with the values shown on your laboratory report. "
-        "Text-based observations can be entered in the relevant fields."
-    )
-
-    section_names = {
-        "COMPLETE URINE EXAMINATION": [
-            "Volume", "Colour", "Transparency", "pH", "Specific Gravity",
-            "Protein", "Glucose", "Blood (urine)", "Ketone", "Bilirubin (urine)",
-            "Urobilinogen", "Nitrite", "Leucocyte Esterase", "WBC / Pus Cells",
-            "Transitional / Squamous epithelial cells", "RBCs (urine)",
-            "Crystals", "Casts", "Bacteria"
-        ],
-        "COMPLETE BLOOD COUNT": [
-            "Haemoglobin", "RBC Count", "PCV / Haematocrit", "MCV",
-            "MCH", "MCHC", "RDW", "Total Leucocyte Count (TLC)"
-        ],
-        "DIFFERENTIAL LEUCOCYTE COUNT": [
-            "Neutrophils (%)", "Lymphocytes (%)", "Monocytes (%)",
-            "Eosinophils (%)", "Basophils (%)", "Neutrophils (absolute)",
-            "Lymphocytes (absolute)", "Monocytes (absolute)",
-            "Eosinophils (absolute)", "Basophils (absolute)",
-            "Platelet Count", "MPV"
-        ],
-        "PERIPHERAL BLOOD SMEAR": [
-            "RBC smear description", "WBC smear description",
-            "Platelet smear description", "Hemoparasites",
-            "Peripheral smear impression"
-        ],
-        "IMMUNOASSAYS": [
-            "TSH", "Vitamin D, 25-OH", "Vitamin B12"
-        ]
-    }
-
-    entered_values = {}
-
-    with st.form("cw_lab_results_form"):
-        for section, names in section_names.items():
-            st.markdown(f"### {section.title()}")
-            columns = st.columns(2)
-
-            for index, name in enumerate(names):
-                info = PARAMETERS[name]
-
-                with columns[index % 2]:
-                    if info["kind"] == "number":
-                        default = str(prefill.get(name, "0.0"))
-
-                        raw_value = st.text_input(
-                            f"{name} ({info['unit']})" if info["unit"] else name,
-                            value=default,
-                            key=f"cw_lab_input_{name}"
-                        )
-
-                        entered_values[name] = raw_value
-
-                    else:
-                        entered_values[name] = st.text_input(
-                            name,
-                            value=str(prefill.get(name, "")),
-                            key=f"cw_lab_input_{name}"
-                        )
-
-        analyze = st.form_submit_button(
-            "Analyze Report",
-            use_container_width=True
+    if show_form:
+        st.subheader(
+            "Enter Medical Details"
+            if input_mode == "⌨️ Manually Enter Data"
+            else "Auto-Filled Form Below (Editable)"
         )
 
-    if analyze:
-        results = {}
-        invalid = []
+        st.caption(
+            "Values start at 0.0. Replace them with the values shown on your laboratory report. "
+            "Text-based observations can be entered in the relevant fields."
+        )
 
-        for name, raw_value in entered_values.items():
-            info = PARAMETERS[name]
+        section_names = {
+            "COMPLETE URINE EXAMINATION": [
+                "Volume", "Colour", "Transparency", "pH", "Specific Gravity",
+                "Protein", "Glucose", "Blood (urine)", "Ketone", "Bilirubin (urine)",
+                "Urobilinogen", "Nitrite", "Leucocyte Esterase", "WBC / Pus Cells",
+                "Transitional / Squamous epithelial cells", "RBCs (urine)",
+                "Crystals", "Casts", "Bacteria"
+            ],
+            "COMPLETE BLOOD COUNT": [
+                "Haemoglobin", "RBC Count", "PCV / Haematocrit", "MCV",
+                "MCH", "MCHC", "RDW", "Total Leucocyte Count (TLC)"
+            ],
+            "DIFFERENTIAL LEUCOCYTE COUNT": [
+                "Neutrophils (%)", "Lymphocytes (%)", "Monocytes (%)",
+                "Eosinophils (%)", "Basophils (%)", "Neutrophils (absolute)",
+                "Lymphocytes (absolute)", "Monocytes (absolute)",
+                "Eosinophils (absolute)", "Basophils (absolute)",
+                "Platelet Count", "MPV"
+            ],
+            "PERIPHERAL BLOOD SMEAR": [
+                "RBC smear description", "WBC smear description",
+                "Platelet smear description", "Hemoparasites",
+                "Peripheral smear impression"
+            ],
+            "IMMUNOASSAYS": [
+                "TSH", "Vitamin D, 25-OH", "Vitamin B12"
+            ]
+        }
 
-            if info["kind"] == "number":
-                try:
-                    results[name] = float(
-                        str(raw_value).replace(",", "").strip() or "0"
-                    )
-                except ValueError:
-                    invalid.append(name)
+        entered_values = {}
 
-            elif str(raw_value).strip():
-                results[name] = str(raw_value).strip()
+        with st.form("cw_lab_results_form"):
+            for section, names in section_names.items():
+                st.markdown(f"### {section.title()}")
+                columns = st.columns(2)
 
-        if invalid:
-            st.error("Please enter a valid number for: " + ", ".join(invalid))
-        else:
-            st.session_state["cw_lab_results"] = results
-            st.session_state["cw_lab_results_ready"] = True
+                for index, name in enumerate(names):
+                    info = PARAMETERS[name]
+
+                    with columns[index % 2]:
+                        if info["kind"] == "number":
+                            default = str(prefill.get(name, "0.0"))
+                            raw_value = st.text_input(
+                                f"{name} ({info['unit']})" if info["unit"] else name,
+                                value=default,
+                                key=f"cw_lab_input_{name}"
+                            )
+                            entered_values[name] = raw_value
+                        else:
+                            entered_values[name] = st.text_input(
+                                name,
+                                value=str(prefill.get(name, "")),
+                                key=f"cw_lab_input_{name}"
+                            )
+
+            analyze = st.form_submit_button(
+                "Analyze Report",
+                use_container_width=True
+            )
+
+        if analyze:
+            results = {}
+            invalid = []
+
+            for name, raw_value in entered_values.items():
+                info = PARAMETERS[name]
+
+                if info["kind"] == "number":
+                    try:
+                        results[name] = float(
+                            str(raw_value).replace(",", "").strip() or "0"
+                        )
+                    except ValueError:
+                        invalid.append(name)
+                elif str(raw_value).strip():
+                    results[name] = str(raw_value).strip()
+
+            if invalid:
+                st.error("Please enter a valid number for: " + ", ".join(invalid))
+            else:
+                st.session_state["cw_lab_results"] = results
+                st.session_state["cw_lab_results_ready"] = True
 
     if st.session_state.get("cw_lab_results_ready") and "cw_lab_results" in st.session_state:
         results = st.session_state["cw_lab_results"]

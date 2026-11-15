@@ -29,9 +29,12 @@ def render():
 
 # Sidebar
     st.sidebar.image("./data/Logo.png")
-    st.sidebar.title("🏥 Find Nearby Hospitals")
-        
-    address = st.sidebar.text_input("📍 Enter your address (e.g., 'Bangalore, India')", 
+    st.sidebar.markdown(
+    "<h3 style='font-size: 18px; line-height: 1.3; margin: 0;'>"
+    "🏥 Find Nearby Hospitals</h3>",
+    unsafe_allow_html=True,
+    )       
+    address = st.sidebar.text_input("", 
                            placeholder="City, Country or full address",
                            key="address_input")
     lat = None
@@ -68,4 +71,4 @@ def render():
         else:
             st.sidebar.error("Please provide a valid location (address or coordinates).")
 
-  
+    
