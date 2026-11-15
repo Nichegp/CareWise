@@ -492,7 +492,7 @@ def render():
 
             analyze = st.form_submit_button(
                 "Analyze Report",
-                use_container_width=True
+                width="stretch"
             )
 
         if analyze:
@@ -558,7 +558,7 @@ def render():
         if rows:
             st.dataframe(
                 rows,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
 

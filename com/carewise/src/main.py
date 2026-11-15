@@ -59,7 +59,7 @@ img {
 # Banner
 # --------------------------------------------------
 
-st.image("./data/Banner.png", use_container_width=True)
+st.image("./data/Banner.png", width="stretch")
 
 # --------------------------------------------------
 # Main Tabs
