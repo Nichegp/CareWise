@@ -5,4 +5,3 @@ numpy
 googlemaps
 SpeechRecognition
 pytesseract
-pyAudio
