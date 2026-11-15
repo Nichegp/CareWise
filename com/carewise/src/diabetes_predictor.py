@@ -28,7 +28,7 @@ def render():
 
     # ---------------- PREPARE DATA ----------------
 
-    patients_data = diabetes_data.drop(columns=['diabetes'], axis=1)
+    patients_data = diabetes_data.drop(columns=['diabetes'])
 
     disease_prediction = diabetes_data['diabetes']
 

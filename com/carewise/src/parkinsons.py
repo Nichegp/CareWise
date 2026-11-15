@@ -18,7 +18,7 @@ def render():
     parkinsons_data = pd.read_csv('./data/parkinsons.csv')
 
     # Data split
-    X = parkinsons_data.drop(columns=['status', 'name'], axis=1)
+    X = parkinsons_data.drop(columns=['status', 'name'])
     Y = parkinsons_data['status']
 
     X_train, X_test, Y_train, Y_test = train_test_split(

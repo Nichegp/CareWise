@@ -12,7 +12,7 @@ import re
 
 def render():
     heart_data = pd.read_csv('./data/heart.csv')
-    patients_data = heart_data.drop(columns='target', axis=1)
+    patients_data = heart_data.drop(columns='target')
     disease_prediction = heart_data['target']
 
     patients_data_train, patients_data_test, disease_prediction_train, disease_prediction_test = train_test_split(

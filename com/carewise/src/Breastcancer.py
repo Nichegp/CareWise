@@ -82,7 +82,7 @@ def render():
 
     # ---------------- PREPARE DATA ----------------
 
-    patients_data = breast_data.drop(columns=['id', 'diagnosis'], axis=1)
+    patients_data = breast_data.drop(columns=['id', 'diagnosis'])
 
     disease_prediction = breast_data['diagnosis'].map({
         'B': 0,
