@@ -7,4 +7,3 @@ SpeechRecognition
 pytesseract
 tesseract
 Pillow
-tesseract-ocr

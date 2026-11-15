@@ -1,12 +1,23 @@
 
 import streamlit as st
-
 import Heart_disease_predictor
 import FindHospital
 import parkinsons
 import Breastcancer
 import diabetes_predictor
 import Bloodtest
+import shutil
+import pytesseract
+import streamlit as st
+
+st.write("Tesseract location:", shutil.which("tesseract"))
+
+try:
+    st.success(
+        f"Tesseract version: {pytesseract.get_tesseract_version()}"
+    )
+except Exception as e:
+    st.error(f"Tesseract error: {e}")
 
 # --------------------------------------------------
 # Page Configuration
