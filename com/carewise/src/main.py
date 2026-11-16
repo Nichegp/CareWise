@@ -10,15 +10,6 @@ import shutil
 import pytesseract
 import streamlit as st
 
-st.write("Tesseract location:", shutil.which("tesseract"))
-
-try:
-    st.success(
-        f"Tesseract version: {pytesseract.get_tesseract_version()}"
-    )
-except Exception as e:
-    st.error(f"Tesseract error: {e}")
-
 # --------------------------------------------------
 # Page Configuration
 # --------------------------------------------------
