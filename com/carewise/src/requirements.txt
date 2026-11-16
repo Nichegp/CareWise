@@ -4,5 +4,5 @@ pandas
 numpy
 googlemaps
 SpeechRecognition
-pytesserac
+pytesseract
 Pillow
