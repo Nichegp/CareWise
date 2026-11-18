@@ -374,7 +374,7 @@ def render():
         uploaded = st.file_uploader(
             "Upload Medical Report",
             type=["jpg", "jpeg", "png"],
-            key="carewise_lab_report_uploader"
+            key="aceso_care_lab_report_uploader"
         )
 
         if uploaded:
@@ -573,7 +573,7 @@ def render():
             st.download_button(
                 "Download extracted results",
                 data=output.getvalue(),
-                file_name="CareWise_Lab_Report_Results.csv",
+                file_name="Aceso_Care_Lab_Report_Results.csv",
                 mime="text/csv"
             )
 

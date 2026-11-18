@@ -15,7 +15,7 @@ import streamlit as st
 # --------------------------------------------------
 
 st.set_page_config(
-    page_title="Care Wise",
+    page_title="Aceso Care",
     page_icon="🏥",
     layout="wide",
 )
@@ -136,6 +136,6 @@ FindHospital.render()
 
 st.markdown("""
 <div style='text-align: center; padding: 0rem; color: green; font-size: 1.2rem;'>
-Care Wise is not designed to replace doctors. It is to ensure patients reach out to doctors at the right time and well informed.
+Aceso Care is not designed to replace doctors. It is to ensure patients reach out to doctors at the right time and well informed.
 </div>
 """, unsafe_allow_html=True)
